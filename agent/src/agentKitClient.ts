@@ -1,14 +1,13 @@
 import {
     AgentKit,
-    CdpWalletProvider, // Using CDP for wallet management as requested
-    // Import Action Providers you need for your 6 features:
-    CdpApiActionProvider,        // For faucet if needed, or other CDP general API calls
+    CdpWalletProvider, 
+    CdpApiActionProvider,        
     WalletActionProvider,
     AcrossActionProvider,
     PythActionProvider,
     OpenseaActionProvider,
-    MessariActionProvider,      // Example for info hub
-    DefiLlamaActionProvider,    // Example for info hub
+    MessariActionProvider,     
+    DefiLlamaActionProvider,   
     // Erc20ActionProvider,     // If you need ERC20 balance/transfer for Base
   } from '@coinbase/agentkit';
   import { config as appConfig } from './config';
@@ -16,7 +15,7 @@ import {
   
   let agentKitInstance: AgentKit | null = null;
   
-  interface AgentTool {
+  export interface AgentTool {
     type: "function";
     function: {
       name: string;

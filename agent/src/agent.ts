@@ -1,101 +1,150 @@
 import { OpenAI } from 'openai';
 import { config as appConfig } from './config';
-import { getAgentKitInstance, getAgentKitTools } from './agentKitClient';
+import { getAgentKitInstance, getAgentKitTools, AgentTool } from './agentKitClient'; // Assuming AgentTool is exported
 
-const openai = new OpenAI({
-  apiKey: appConfig.openaiApiKey,
-});
+// Define types for OpenAI interaction if not already available or to be more specific
+interface OpenAIChatCompletionMessageParam {
+  role: "system" | "user" | "assistant" | "tool";
+  content: string | null;
+  tool_calls?: OpenAI.Chat.Completions.ChatCompletionMessageToolCall[];
+  tool_call_id?: string;
+}
 
-interface AgentResponse {
+export interface AgentResponse {
   textResponse: string;
   actionTaken?: string;
   actionResult?: any;
   error?: string;
 }
 
-// Keep track of the conversation
-let conversationHistory: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
+export interface StallContext {
+  id: number;
+  name: string;
+  agentFeatureHint: string;
+}
 
-export async function processVoiceCommand(command: string): Promise<AgentResponse> {
-  const agentKit = getAgentKitInstance(); // Ensure AgentKit is initialized
-  const tools = getAgentKitTools();
+const openai = new OpenAI({
+  apiKey: appConfig.openaiApiKey,
+});
+
+// Keep track of the conversation
+let conversationHistory: OpenAIChatCompletionMessageParam[] = [];
+
+export async function processVoiceCommand(
+  command: string,
+  stallContext?: StallContext,
+  walletAddress?: string, // Passed from frontend for context
+  networkId?: string      // Passed from frontend for context
+): Promise<AgentResponse> {
+  const agentKit = getAgentKitInstance();
+  const tools = getAgentKitTools() as OpenAI.Chat.Completions.ChatCompletionTool[]; // Cast for OpenAI SDK
 
   // Add user's command to conversation history
   conversationHistory.push({ role: "user", content: command });
 
-  // System Prompt - CRUCIAL for guiding the LLM
-  const agentKitAddress = agentKit['walletProvider']?.getAddress() || "Wallet not fully initialized";
-  const systemPrompt = `You are a helpful Web3 voice assistant.
-Your primary operational network is Base (specifically ${appConfig.cdp.baseNetworkId}). All on-chain actions like deployments, balance checks for your connected wallet, and NFT interactions via OpenSea should target this Base network unless explicitly told otherwise for a specific tool (like bridging).
+  const agentKitAddress = agentKit['walletProvider']?.getAddress() || "Wallet address not fully initialized";
+  const agentNetwork = agentKit['walletProvider']?.getNetwork();
+  const agentBaseNetworkId = agentNetwork?.networkId || appConfig.cdp.baseNetworkId;
+
+
+  let systemContext = `Your primary operational network is Base (specifically ${agentBaseNetworkId}). Your connected wallet address on Base is: ${agentKitAddress}.`;
+  if (walletAddress && walletAddress.toLowerCase() !== agentKitAddress.toLowerCase()) {
+    systemContext += ` The user's interacting wallet address appears to be ${walletAddress}.`;
+  }
+  if (networkId && networkId !== agentBaseNetworkId) {
+     systemContext += ` The user seems to be viewing content on the ${networkId} network, but your actions are on ${agentBaseNetworkId}.`;
+  }
+
+
+  if (stallContext) {
+    systemContext += `\n\nYou are currently interacting with the "${stallContext.name}" stall. This stall is related to: ${stallContext.agentFeatureHint}. Prioritize tools relevant to this context if applicable.`;
+  }
+
+  const systemPrompt = `You are a helpful Web3 voice assistant for the Taifei Bazaar.
+${systemContext}
 When a user asks for a price, use Pyth. When they ask for general crypto info, use Messari or DefiLlama.
 Available tools:
 ${tools.map(tool => `- ${tool.function.name}: ${tool.function.description}`).join('\n')}
-When you use a tool, provide all required parameters.
+When you use a tool, provide all required parameters precisely as described.
 After a tool executes, if it's an on-chain transaction, confirm success and provide the transaction hash.
-If a tool returns data, summarize it clearly for the user.
-If you are unsure or a command is ambiguous, use the "clarify_or_get_more_info" tool to ask the user for more details. Do not try to guess.
-Your connected wallet address on Base is: ${agentKitAddress}.`;
+If a tool returns data, summarize it clearly and concisely for the user.
+If you are unsure, if the command is ambiguous, or if the user's request doesn't match any specific tool for the current stall, use the "clarify_or_get_more_info" tool to ask the user for more details or guide them. Do not try to guess or make up actions.
+If an action fails, inform the user clearly about the error.`;
 
   try {
-    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+    const messages: OpenAIChatCompletionMessageParam[] = [
       { role: "system", content: systemPrompt },
       ...conversationHistory
     ];
 
-    console.log("Sending to OpenAI:", JSON.stringify(messages, null, 2));
-    console.log("With tools:", JSON.stringify(tools, null, 2));
+    console.log("Sending to OpenAI - Messages:", JSON.stringify(messages, null, 2));
+    console.log("Sending to OpenAI - Tools:", JSON.stringify(tools, null, 2));
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Or your preferred model
-      messages: messages,
+      model: "gpt-4o-mini",
+      messages: messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[], // Cast for SDK
       tools: tools,
       tool_choice: "auto",
     });
 
     const responseMessage = response.choices[0].message;
-    conversationHistory.push(responseMessage); // Add AI's response to history
+    conversationHistory.push(responseMessage as OpenAIChatCompletionMessageParam);
 
-    if (responseMessage.tool_calls) {
+    if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
       console.log("OpenAI wants to call tools:", responseMessage.tool_calls);
-      const toolCall = responseMessage.tool_calls[0]; // Assuming one tool call for simplicity
+      // For simplicity, handling one tool call. Loop if multiple are possible.
+      const toolCall = responseMessage.tool_calls[0];
       const functionName = toolCall.function.name;
-      const functionArgs = JSON.parse(toolCall.function.arguments);
+      let functionArgs = {};
+      try {
+        functionArgs = JSON.parse(toolCall.function.arguments);
+      } catch (parseError) {
+        console.error("Error parsing tool arguments:", parseError, "\nArguments string:", toolCall.function.arguments);
+        conversationHistory.push({
+            tool_call_id: toolCall.id,
+            role: "tool",
+            content: JSON.stringify({ error: "Invalid arguments format from LLM." }),
+        });
+        return { textResponse: "Sorry, there was an issue understanding the parameters for that action. Could you try rephrasing?", error: "Argument parsing error." };
+      }
+
 
       if (functionName === "clarify_or_get_more_info") {
         conversationHistory.push({
             tool_call_id: toolCall.id,
             role: "tool",
-            // 'name' property is not part of ChatCompletionToolMessageParam
-            content: JSON.stringify({ clarification_sent_to_user: true })
+            content: JSON.stringify({ clarification_sent_to_user: true, question: (functionArgs as any).question_to_user })
         });
-        return { textResponse: functionArgs.question_to_user };
+        return { textResponse: (functionArgs as any).question_to_user };
       }
 
       const actionToExecute = agentKit.getActions().find(a => a.name.replace(/ActionProvider_/g, '_') === functionName);
 
       if (actionToExecute) {
         console.log(`Executing AgentKit action: ${actionToExecute.name} with args:`, functionArgs);
+        let result;
         try {
-          const result = await actionToExecute.invoke(functionArgs);
+          // Validate arguments with Zod schema before invoking
+          const validatedArgs = actionToExecute.schema.parse(functionArgs);
+          result = await actionToExecute.invoke(validatedArgs);
           console.log(`AgentKit action ${actionToExecute.name} result:`, result);
+
           conversationHistory.push({
             tool_call_id: toolCall.id,
             role: "tool",
-            // 'name' property is not part of ChatCompletionToolMessageParam
             content: typeof result === 'string' ? result : JSON.stringify(result),
           });
 
-          // Get final response from OpenAI after tool execution
-          const finalMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+          const finalMessages: OpenAIChatCompletionMessageParam[] = [
              { role: "system", content: systemPrompt },
              ...conversationHistory
           ];
           const finalResponse = await openai.chat.completions.create({
             model: "gpt-4o-mini",
-            messages: finalMessages,
+            messages: finalMessages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
           });
-          const aiFinalText = finalResponse.choices[0].message.content || "Action performed.";
-          conversationHistory.push(finalResponse.choices[0].message); // Add final AI response
+          const aiFinalText = finalResponse.choices[0].message.content || "Action performed successfully.";
+          conversationHistory.push(finalResponse.choices[0].message as OpenAIChatCompletionMessageParam);
 
           return {
             textResponse: aiFinalText,
@@ -103,41 +152,64 @@ Your connected wallet address on Base is: ${agentKitAddress}.`;
             actionResult: result,
           };
         } catch (e: any) {
-          console.error(`Error executing AgentKit action ${actionToExecute.name}:`, e);
+          console.error(`Error during AgentKit action ${actionToExecute.name} (invocation or Zod parsing):`, e);
+          let errorContent = `Error during action ${functionName}: `;
+          if (e instanceof Error) {
+            errorContent += e.message;
+          } else if (typeof e === 'string') {
+            errorContent += e;
+          } else {
+            errorContent += "An unknown error occurred.";
+          }
+          if (e.issues) { // ZodError
+            errorContent += ` Validation issues: ${JSON.stringify(e.issues)}`;
+          }
+
           conversationHistory.push({
             tool_call_id: toolCall.id,
             role: "tool",
-            // 'name' property is not part of ChatCompletionToolMessageParam
-            content: JSON.stringify({ error: e.message || "Unknown error during action execution" }),
+            content: JSON.stringify({ error: errorContent }),
           });
-          return { textResponse: `Error performing action ${functionName}: ${e.message}`, error: e.message };
+           // Ask OpenAI to summarize the error
+           const errorSummaryMessages: OpenAIChatCompletionMessageParam[] = [
+            { role: "system", content: systemPrompt },
+            ...conversationHistory,
+            { role: "user", content: `The previous tool call for '${functionName}' failed with the error: ${errorContent}. Please inform the user about this error in a simple way.` }
+          ];
+          const errorSummaryResponse = await openai.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: errorSummaryMessages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+          });
+          const errorSummaryText = errorSummaryResponse.choices[0].message.content || `An error occurred with the action: ${functionName}.`;
+          conversationHistory.push(errorSummaryResponse.choices[0].message as OpenAIChatCompletionMessageParam);
+          return { textResponse: errorSummaryText, error: errorContent };
         }
       } else {
-        console.error(`AgentKit action not found for tool: ${functionName}`);
-        // If the tool isn't an agentkit action (e.g. clarify_or_get_more_info handled above, or others you might add)
-        // this path might be taken. For now, assume it's an error if not caught earlier.
-         conversationHistory.push({
-            tool_call_id: toolCall.id,
+        console.error(`AgentKit action/tool not found: ${functionName}`);
+        conversationHistory.push({
+            tool_call_id: toolCall.id, // Still need tool_call_id even if tool is unknown
             role: "tool",
-            // 'name' property is not part of ChatCompletionToolMessageParam
-            content: JSON.stringify({ error: `Tool ${functionName} not found or not an AgentKit action.` }),
-          });
-        return { textResponse: `Sorry, I don't know how to do '${functionName}'.`, error: `Tool ${functionName} not mapped to AgentKit action.` };
+            content: JSON.stringify({ error: `Tool ${functionName} is not recognized or implemented.` }),
+        });
+        return { textResponse: `Sorry, I'm not equipped to handle the command '${functionName}'. Could you try something else or rephrase?`, error: `Tool ${functionName} not mapped.` };
       }
     } else if (responseMessage.content) {
-      console.log("OpenAI response (no tool call):", responseMessage.content);
+      console.log("OpenAI direct response (no tool call):", responseMessage.content);
       return { textResponse: responseMessage.content };
     } else {
-      return { textResponse: "I'm not sure how to respond to that.", error: "No content or tool_calls in OpenAI response." };
+      console.log("OpenAI response was empty or unexpected.");
+      return { textResponse: "I received an unusual response. Could you try that again?", error: "No content or tool_calls in OpenAI response." };
     }
 
   } catch (error: any) {
-    console.error("Error in processVoiceCommand:", error);
-    return { textResponse: "Sorry, I encountered an error.", error: error.message };
+    console.error("Critical error in processVoiceCommand:", error);
+    // Attempt to salvage conversation history if possible, but this is a more severe error
+    // conversationHistory.push({ role: "assistant", content: `A system error occurred: ${error.message}`}); // Or just log it
+    return { textResponse: "Sorry, a critical error occurred while processing your command.", error: error.message };
   }
 }
 
 export function resetConversation() {
     conversationHistory = [];
-    console.log("Conversation history reset.");
+    console.log("Agent conversation history has been reset.");
 }
