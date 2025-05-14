@@ -435,7 +435,7 @@ export default function Home() {
               <div className="absolute inset-0 bg-green-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
               <div className="text-4xl mb-6 bg-green-500/20 rounded-full w-16 h-16 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 relative"><span className="relative z-10">💼</span><div className="absolute inset-0 rounded-full bg-gradient-to-br from-green-500/20 to-emerald-600/20 blur-sm"></div></div>
               <h3 className="text-xl font-bold mb-3 text-green-300 group-hover:text-green-200 transition-colors">Wallet Info (Base)</h3>
-              <p className="text-gray-300">Instantly check your connected wallet's balance, address, and current network details, specifically for the Base network.</p>
+              <p className="text-gray-300">Instantly check your connected wallet balance, address, and current network details, specifically for the Base network.</p>
               <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-green-500/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             </div>
             <div className="bg-gradient-to-br from-gray-900/70 to-purple-950/30 backdrop-blur-md rounded-xl p-6 border border-purple-500/20 hover:border-purple-500/40 transition-all duration-300 group hover:shadow-lg hover:shadow-purple-600/10 relative overflow-hidden">
@@ -518,7 +518,7 @@ export default function Home() {
                   <div className="flex items-center"><div className="text-3xl mr-3 relative"><span className="relative z-10">🧠</span><div className="absolute inset-0 rounded-full bg-lime-500/20 filter blur-sm transform scale-125"></div></div><h3 className="text-lg font-bold text-lime-300 group-hover:text-lime-200 transition-colors">OpenAI LLM</h3></div>
                   <div className="px-2 py-1 rounded-full bg-lime-900/30 border border-lime-500/20 text-lime-400 text-xs">NLU</div>
                 </div>
-                <p className="text-gray-300 text-sm mb-4">Intelligent understanding of your voice commands and natural language response generation powered by OpenAI's advanced models.</p>
+                <p className="text-gray-300 text-sm mb-4">Intelligent understanding of your voice commands and natural language response generation powered by OpenAI advanced models.</p>
                 <div className="flex justify-between items-center"><div className="flex items-center text-xs text-lime-200/60"><span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>Active</div><div className="text-lime-400/80 text-sm">GPT-4o Mini</div></div>
                 <div className="absolute inset-0 bg-lime-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
               </div>
@@ -530,7 +530,7 @@ export default function Home() {
                   <div className="flex items-center"><div className="text-3xl mr-3 relative"><span className="relative z-10">📊</span><div className="absolute inset-0 rounded-full bg-pink-500/20 filter blur-sm transform scale-125"></div></div><h3 className="text-lg font-bold text-pink-300 group-hover:text-pink-200 transition-colors">Pyth Network</h3></div>
                   <div className="px-2 py-1 rounded-full bg-pink-900/30 border border-pink-500/20 text-pink-400 text-xs">Oracles</div>
                 </div>
-                <p className="text-gray-300 text-sm mb-4">Access real-time, high-fidelity price data from Pyth's decentralized oracle network for accurate market information.</p>
+                <p className="text-gray-300 text-sm mb-4">Access real-time, high-fidelity price data from Pyth decentralized oracle network for accurate market information.</p>
                 <div className="flex justify-between items-center"><div className="flex items-center text-xs text-pink-200/60"><span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1"></span>Active</div><div className="text-pink-400/80 text-sm">Live Prices</div></div>
                 <div className="absolute inset-0 bg-pink-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
               </div>

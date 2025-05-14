@@ -1,8 +1,9 @@
 // frontend/src/hooks/useVoiceInteraction.ts
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { sendCommandToAgent, proxyElevenLabsTTS, AgentCallPayload, AgentCallResponse } from '@/services/agentService';
+import { sendCommandToAgent, proxyElevenLabsTTS, AgentCallPayload } from '@/services/agentService';
 import { StallConfig } from '@/lib/stallsData';
-import SpeechRecognitionAPI, { SpeechRecognitionEvent } from '@/app/arena/types/speechRecognition'; // Assuming your types are here
+// Ensure SpeechRecognitionEvent is exported from your types file
+import SpeechRecognitionAPI, { SpeechRecognitionEvent } from '@/app/arena/types/speechRecognition';
 
 export interface UseVoiceInteractionReturn {
   isRecording: boolean;
@@ -19,6 +20,12 @@ interface Props {
   walletAddress?: string;
   currentNetworkId?: string;
 }
+
+// Define a more specific type for SpeechRecognitionError if not in your types file
+interface SpeechRecognitionErrorEvent extends Event {
+    error: string; // Standard DOMError types for speech recognition are 'no-speech', 'audio-capture', 'network', etc.
+    message?: string; // Some implementations might provide a message
+  }
 
 export function useVoiceInteraction({ walletAddress, currentNetworkId }: Props): UseVoiceInteractionReturn {
   const [isRecording, setIsRecording] = useState(false);
@@ -43,13 +50,19 @@ export function useVoiceInteraction({ walletAddress, currentNetworkId }: Props):
       } else if (!audioBlob) {
         console.warn("TTS proxy returned no audio blob.");
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error("TTS Playback error:", e);
-      setError(`TTS Playback Error: ${e.message}`);
+      setError(`TTS Playback Error: ${e instanceof Error ? e.message : String(e)}`);
     }
   }, []);
 
   const handleRecognitionResult = useCallback(async (event: SpeechRecognitionEvent) => {
+    if (!event.results || event.results.length === 0 || !event.results[0][0]) {
+        console.error("Speech recognition event does not contain valid results.", event);
+        setError("No speech detected or result format unexpected.");
+        setIsProcessing(false);
+        return;
+    }
     const transcript = event.results[0][0].transcript;
     console.log("Transcribed:", transcript);
     setIsProcessing(true);
@@ -89,24 +102,30 @@ export function useVoiceInteraction({ walletAddress, currentNetworkId }: Props):
 
   useEffect(() => {
     if (typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window)) {
-      const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (SpeechRecognitionAPI) {
-        recognitionRef.current = new SpeechRecognitionAPI();
+      const SpeechRecognitionAPIImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRecognitionAPIImpl) {
+        const instance = new SpeechRecognitionAPIImpl();
+        instance.continuous = false;
+        instance.interimResults = false;
+        instance.lang = 'en-US';
+
+        instance.onstart = () => setIsRecording(true);
+        instance.onend = () => setIsRecording(false);
+        // Use SpeechRecognitionEvent for onerror if it's correctly defined to include an 'error' property.
+        // Otherwise, use a more generic Event or SpeechRecognitionErrorEvent as defined above.
+        instance.onerror = (event: Event | SpeechRecognitionEvent | SpeechRecognitionErrorEvent ) => {
+          const errorProperty = (event as SpeechRecognitionEvent).error || (event as SpeechRecognitionErrorEvent).error || 'unknown-error';
+          setError(`Speech recognition error: ${errorProperty}`);
+          setIsRecording(false);
+        };
+         // Cast is necessary if handleRecognitionResult expects SpeechRecognitionEvent
+         // and onresult provides a more generic Event. Ensure your types align.
+        instance.onresult = (event: Event) => handleRecognitionResult(event as SpeechRecognitionEvent);
+
+        recognitionRef.current = instance;
       } else {
-        setError("SpeechRecognitionAPI is not available.");
+        setError("SpeechRecognitionAPI constructor is not available.");
       }
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      recognitionRef.current.lang = 'en-US';
-
-      recognitionRef.current.onstart = () => setIsRecording(true);
-      recognitionRef.current.onend = () => setIsRecording(false);
-      recognitionRef.current.onerror = (event: any) => { // Use 'any' for simplicity, or find a more specific type
-        setError(`Speech recognition error: ${event.error}`);
-        setIsRecording(false);
-      };
-      recognitionRef.current.onresult = handleRecognitionResult;
-
       audioRef.current = new Audio();
     } else {
       setError("Speech recognition not supported in this browser.");
@@ -116,7 +135,7 @@ export function useVoiceInteraction({ walletAddress, currentNetworkId }: Props):
       recognitionRef.current?.stop();
       audioRef.current?.pause();
     };
-  }, [handleRecognitionResult]);
+  }, [handleRecognitionResult]); // handleRecognitionResult is memoized by useCallback
 
   const startRecognition = (stallContext?: StallConfig) => {
     if (recognitionRef.current && !isRecording) {
@@ -124,18 +143,20 @@ export function useVoiceInteraction({ walletAddress, currentNetworkId }: Props):
       setError(null);
       setAgentResponseText(null);
       setAgentActionDetails(null);
-      audioRef.current?.pause(); // Stop any ongoing TTS
+      if (audioRef.current) {
+        audioRef.current.pause(); // Ensure audioRef.current is checked
+      }
       try {
         recognitionRef.current.start();
-      } catch (e) {
+      } catch (e: unknown) {
          console.error("Error starting speech recognition:", e);
-         setError("Failed to start microphone. Please check permissions.");
+         setError(`Failed to start microphone. Please check permissions. Error: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
   };
 
   const stopRecognition = () => {
-    if (recognitionRef.current && isRecording) {
+    if (recognitionRef.current && isRecording) { // Check recognitionRef.current
       recognitionRef.current.stop();
     }
   };

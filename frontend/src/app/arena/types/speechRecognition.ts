@@ -1,5 +1,5 @@
 // Add SpeechRecognition types that aren't in the standard TS library
-interface SpeechRecognitionEvent extends Event {
+export interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
   resultIndex: number;
   error: Error | unknown;

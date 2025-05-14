@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { usePrivy } from "@privy-io/react-auth";
-import { useSocket, PlayerData } from "../../contexts/SocketContext"; 
+import { useSocket, PlayerData } from "../../contexts/SocketContext";
 import { useAccount } from "wagmi";
+
+// Import components
 import Background from "./components/Background";
 import StallComponent from "./components/Stall";
 import Character from "./components/Character";
@@ -16,11 +18,10 @@ import SpeechRecognitionUi from "./components/SpeechRecognition";
 import HeaderUI from "./components/HeaderUI";
 import TeamButtons from "./components/TeamButtons";
 import ArenaStyles from "./components/ArenaStyles";
+
 import { useVoiceInteraction } from "@/hooks/useVoiceInteraction";
 import { stalls as stallConfigurations, StallConfig } from "@/lib/stallsData";
 import { resetAgentConversationOnBackend } from "@/services/agentService";
-// SpeechRecognitionEvent type is imported by useVoiceInteraction hook if needed there
-// import SpeechRecognitionAPI, { SpeechRecognitionEvent } from "./types/speechRecognition";
 
 
 export default function Arena() {
@@ -34,7 +35,7 @@ export default function Arena() {
   const [viewportSize, setViewportSize] = useState({ width: 1200, height: 600 });
 
   const router = useRouter();
-  const { user, authenticated, ready } = usePrivy(); 
+  const { user, authenticated, ready } = usePrivy();
   const { chain } = useAccount();
   const currentNetworkId = chain?.id.toString();
 
@@ -67,11 +68,10 @@ export default function Arena() {
     : "";
 
   useEffect(() => {
-    // Only redirect if Privy is ready and the user is not authenticated.
     if (ready && !authenticated) {
       router.push("/");
     }
-  }, [authenticated, ready, router]); // `ready` is now defined before this useEffect
+  }, [authenticated, ready, router]);
 
   useEffect(() => {
     const updateViewportSize = () => {
@@ -84,7 +84,7 @@ export default function Arena() {
 
 
   const step = 10;
-  const characterSize = { width: 32, height: 48 };
+  const characterSize = { width: 32, height: 48 }; // This is used in the keydown effect
 
   const toggleControlsVisibility = () => setShowControls(!showControls);
 
@@ -101,7 +101,7 @@ export default function Arena() {
         Math.abs(pos.y + characterSize.height / 2 - (stall.y + stall.height / 2)) < 80
     );
     setActiveStall(nearbyStall || null);
-  }, [viewportSize.width, viewportSize.height, characterSize.width, characterSize.height]); // Added dependencies
+  }, [viewportSize.width, viewportSize.height, characterSize.width, characterSize.height]);
 
 
   useEffect(() => {
@@ -126,9 +126,9 @@ export default function Arena() {
         let newY = prevPosition.y;
         switch (event.key) {
           case "ArrowUp": newY = Math.max(0, prevPosition.y - step); break;
-          case "ArrowDown": newY = Math.min(viewportSize.height - characterSize.height, prevPosition.y + step); break;
+          case "ArrowDown": newY = Math.min(viewportSize.height - characterSize.height, prevPosition.y + step); break; // Used characterSize
           case "ArrowLeft": newX = Math.max(0, prevPosition.x - step); break;
-          case "ArrowRight": newX = Math.min(viewportSize.width - characterSize.width, prevPosition.x + step); break;
+          case "ArrowRight": newX = Math.min(viewportSize.width - characterSize.width, prevPosition.x + step); break; // Used characterSize
           default: return prevPosition;
         }
         checkNearbyStalls({ x: newX, y: newY });
@@ -154,7 +154,8 @@ export default function Arena() {
   }, [
     position, activeStall, showEmoteMenu, currentEmote, showNameInput,
     viewportSize, isRecording, isProcessing, startRecognition, stopRecognition,
-    checkNearbyStalls, clearAgentResponse // Added checkNearbyStalls & clearAgentResponse
+    checkNearbyStalls, clearAgentResponse,
+    characterSize.width, characterSize.height // <<< ADDED MISSING DEPENDENCIES HERE
   ]);
 
   const handleEmoteSelect = (emote: string) => {
@@ -199,7 +200,6 @@ export default function Arena() {
     setJoinTeamInputValue("");
   };
 
-   // Calculate absolute stall positions based on viewport
   const dynamicStalls = stallConfigurations.map(stall => ({
     ...stall,
     x: stall.x * viewportSize.width,
@@ -209,9 +209,8 @@ export default function Arena() {
     accentColor: stall.accentColor || "#000",  
     darkColor: stall.darkColor || "#000",    
     counterColor: stall.counterColor || "#000", 
-    area: stall.area?.toString() || "0",       
+    area: stall.area?.toString() || "0",
   }));
-
 
   useEffect(() => {
     if (socket && isConnected && roomCode) {
@@ -224,17 +223,6 @@ export default function Arena() {
       socket.emit("player_emote", { roomCode, emote: currentEmote });
     }
   }, [currentEmote, socket, isConnected, roomCode]);
-
-  // This useEffect was for username, but it's better handled in handleUsernameSubmit
-  // to avoid sending updates on every username character change.
-  // If you specifically want real-time username updates as the user types (before submit),
-  // you can re-add it, but typically submitting on form submission is preferred.
-  // useEffect(() => {
-  //   if (socket && isConnected && roomCode && username) {
-  //     socket.emit("player_name", { roomCode, username });
-  //   }
-  // }, [username, socket, isConnected, roomCode]);
-
 
   const emotes = ["👋", "👍", "❤️", "😂", "🎉", "🤔", "👀", "🙏"];
 
