@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentKit Voice Tester</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1> Voice Agent</h1>
+        <button id="startButton">Start Listening</button>
+        <button id="stopButton" disabled>Stop Listening</button>
+        <button id="resetConversationButton">Reset Conversation</button>
+        <div class="status" id="status">Press "Start Listening" and speak your command.</div>
+        <div class="transcription">
+            <h2>You said:</h2>
+            <p id="transcribedText">-</p>
+        </div>
+        <div class="agent-response">
+            <h2>Agent says:</h2>
+            <p id="agentResponseText">-</p>
+        </div>
+        <div class="agent-action">
+            <h2>Agent action:</h2>
+            <pre id="agentActionDetails">-</pre>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
