@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Taifei Bazaar",
+  title: "Bharat Bazaar",
   description: "A night market metaverse for frens",
 };
 
