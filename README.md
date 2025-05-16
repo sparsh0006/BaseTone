@@ -36,7 +36,9 @@ BaseTone directly addresses the **AI Track** by featuring:
 *   **Voice-Activated Commands & Text-to-Speech (TTS):** Seamless interaction using voice, with agent responses vocalized by ElevenLabs.
 *   **Interactive Stalls:** Each stall (Edu Hub, Info Kiosk, Wallet Check, Bridge, Price Oracle, NFT Booth) provides a focused context for specific AI-driven onchain tasks.
 *   **Real-time Multiplayer:** Shared experience with synchronized player movements, names, and emotes via Socket.IO.
-*   **Seamless Onboarding:** Easy wallet connection with Privy and integration with Base-recommended tools like Smart Wallets.
+*   **Seamless Onboarding & User Experience:**
+    *   Easy wallet connection with Privy.
+    *   Enhanced by **Coinbase Smart Wallet** capabilities, allowing users to perform transactions using human-readable names (e.g., "Send 0.1 ETH to `deepak.base.eth`" or "What's the balance of `alice.base.eth`?"), abstracting away complex wallet addresses for a smoother onchain experience.
 
 ## Tech Stack
 
@@ -50,7 +52,7 @@ BaseTone directly addresses the **AI Track** by featuring:
 *   **Onchain:** Built on and for Base.
 *   **Technicality:** Complex integration of AI, voice, real-time multiplayer, and various Web3 services via AgentKit.
 *   **Originality:** Novel voice-first AI interaction model within a metaverse for onchain actions.
-*   **Practicality:** Simplifies common Web3 tasks through natural language.
+*   **Practicality:** Simplifies common Web3 tasks through natural language and user-friendly addressing.
 *   **Aesthetics:** Engaging and intuitive pixel-art bazaar.
 *   **Wow Factor:** The combination of a live, voice-controlled AI agent performing real onchain tasks in a shared virtual space.
 
@@ -59,12 +61,13 @@ BaseTone directly addresses the **AI Track** by featuring:
 ### Prerequisites
 
 *   Node.js (v18+ or as specified in project)
-*   pnpm (v9.15+ or as specified in project)
+*   pnpm (v9.15+ or as specified in project for frontend/socket-backend)
+*   npm (for agent backend as per your installation steps)
 *   Git
 
 ### Environment Setup
 
-Create `.env` files as described below for each service:
+Create `.env` (or `.env.local` for frontend) files as described below for each service:
 
 1.  **Agent Backend (`agent/.env`):**
     ```env
@@ -79,7 +82,16 @@ Create `.env` files as described below for each service:
     ```
 2.  **Frontend (`frontend/.env.local`):**
     ```env
+    # For local development:
+    NEXT_PUBLIC_PRIVY_APP_ID="your_privy_app_id_e.g_cm7ff4ltg029ubyp3c7kgd85m"
+    NEXT_PUBLIC_SOCKET_IO_URL="http://localhost:3002"
     NEXT_PUBLIC_AGENT_BACKEND_URL="http://localhost:3005"
+
+    # For production, these will be set in your hosting provider's environment variables.
+    # Example:
+    # NEXT_PUBLIC_PRIVY_APP_ID="your_privy_app_id_e.g_cm7ff4ltg029ubyp3c7kgd85m"
+    # NEXT_PUBLIC_SOCKET_IO_URL="https://your-socket-backend.onrender.com"
+    # NEXT_PUBLIC_AGENT_BACKEND_URL="https://your-agent-backend.onrender.com"
     ```
 3.  **Socket Backend (`backend/.env`):**
     ```env
@@ -142,6 +154,7 @@ You need to run all three services concurrently. Open three separate terminal wi
     *(Typically runs on `http://localhost:3001`)*
 
 Once all services are running, navigate to `http://localhost:3001` in your browser.
+
 
 ## License
 
