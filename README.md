@@ -2,6 +2,9 @@
 
 **Submission for the Base Batches Global Buildathon - AI Track.**
 
+<!-- Optional: Add your primary project image/logo here -->
+![BaseTone Project Banner or Logo](assets/1.png)
+
 BaseTone is an immersive metaverse experience where users interact with a voice-controlled AI agent to perform useful onchain actions on Base. It's our vision for the next wave of user-friendly, AI-driven onchain applications, designed to be a "killer onchain app."
 
 [![Watch the Demo Video](https://img.youtube.com/vi/YOUR_VIDEO_ID_HERE/0.jpg)](https://www.youtube.com/watch?v=YOUR_VIDEO_ID_HERE)
@@ -18,6 +21,9 @@ Navigating the onchain world can be complex. BaseTone simplifies this by introdu
 *   **Explore & Discover:** Move their character, find interactive stalls.
 *   **Perform Onchain Actions:** Deploy contracts, check balances, bridge assets, get NFT info, and fetch real-time prices, all powered by our AI agent on Base.
 *   **Connect with Others:** Experience the bazaar in real-time with friends in shared rooms.
+
+<!-- Optional: Add a relevant screenshot or diagram here -->
+![BaseTone Gameplay Screenshot](assets/2.png)
 
 ## Key Features & Alignment with AI Track
 
@@ -91,8 +97,8 @@ Create `.env` files as described below for each service:
 2.  **Install Agent Backend dependencies & build:**
     ```bash
     cd agent
-    pnpm install
-    pnpm run build
+    npm install
+    npm run build
     cd ..
     ```
 
@@ -117,21 +123,21 @@ You need to run all three services concurrently. Open three separate terminal wi
 1.  **Start the Agent Backend (Terminal 1):**
     ```bash
     cd agent
-    pnpm dev
+    npm run dev
     ```
     *(Typically runs on `http://localhost:3005`)*
 
 2.  **Start the Socket Backend (Terminal 2):**
     ```bash
     cd backend
-    pnpm dev
+    pnpm run dev
     ```
     *(Typically runs on `http://localhost:3002`)*
 
 3.  **Start the Frontend (Terminal 3):**
     ```bash
     cd frontend
-    pnpm dev
+    pnpm run dev
     ```
     *(Typically runs on `http://localhost:3001`)*
 
